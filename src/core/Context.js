@@ -23,6 +23,7 @@ module.exports = class Context {
     this.configArr = []; // 配置
     this.webpackFns = []; // 插件注册的修改函数
     this.eventHooks = {}; // 插件注册的生命周期函数
+    this.CustomDevServer = null; // 自定义devServer
 
     this.pkg = this.getProjectFile(PKG_FILE);
 
@@ -107,6 +108,10 @@ module.exports = class Context {
     });
   }
 
+  setDevServer(server) {
+    this.CustomDevServer = server;
+  }
+
   chainWebpack(fn) {
     const fnInfo = this.webpackFns.find(v => v.name === this.pluginName);
     if (!fnInfo) {
@@ -147,6 +152,7 @@ module.exports = class Context {
         'registerConfig',
         'chainWebpack',
         'onHook',
+        'setDevServer',
       ]);
       await fn(pluginAPI, options);
     }

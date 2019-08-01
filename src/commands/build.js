@@ -36,53 +36,53 @@ module.exports = async function({
     }
 
     fs.removeSync(buildPath);
-  }
 
-  const webpackConfig = configArr.map(v => v.chainConfig.toConfig());
+    const webpackConfig = configArr.map(v => v.chainConfig.toConfig());
 
-  let compiler;
-  try {
-    compiler = webpack(webpackConfig);
-  } catch (err) {
-    log.error(chalk.red('Failed to load webpack config.'));
-    log.error(err);
-    process.exit(1);
-  }
+    let compiler;
+    try {
+      compiler = webpack(webpackConfig);
+    } catch (err) {
+      log.error(chalk.red('Failed to load webpack config.'));
+      log.error(err);
+      process.exit(1);
+    }
 
-  await new Promise((resolve) => {
-    compiler.run((err, stats) => {
-      if (err) {
-        console.error(err.stack || err);
-        if (err.details) {
-          console.error(err.details);
+    await new Promise((resolve) => {
+      compiler.run((err, stats) => {
+        if (err) {
+          console.error(err.stack || err);
+          if (err.details) {
+            console.error(err.details);
+          }
+          process.exit(1);
         }
-        process.exit(1);
-      }
 
-      const info = stats.toJson();
+        const info = stats.toJson();
 
-      if (stats.hasErrors()) {
-        console.error(info.errors);
-      }
+        if (stats.hasErrors()) {
+          console.error(info.errors);
+        }
 
-      if (stats.hasWarnings()) {
-        console.warn(info.warnings);
-      }
+        if (stats.hasWarnings()) {
+          console.warn(info.warnings);
+        }
 
-      console.log(
-        stats.toString({
-          assets: true,
-          colors: true,
-          chunks: false,
-          entrypoints: false,
-          modules: false,
-        }),
-      );
+        console.log(
+          stats.toString({
+            assets: true,
+            colors: true,
+            chunks: false,
+            entrypoints: false,
+            modules: false,
+          }),
+        );
 
-      log.info(chalk.green('\nBuild successfully.'));
-      resolve();
-    });
-  })
+        log.info(chalk.green('\nBuild successfully.'));
+        resolve();
+      });
+    })
+  }
 
   await applyHook(`after.${command}`);
 };

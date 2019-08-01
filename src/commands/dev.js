@@ -19,62 +19,75 @@ module.exports = async function({
     rootDir,
   });
 
+  let serverUrl = '';
+
   const { applyHook } = context;
+
   await applyHook(`before.${command}`);
 
   const configArr = await context.getConfig();
 
-  let devServerConfig = {
-    port: 9999,
-    host: address.ip(),
-  };
+  // CustomDevServer may be changed by plugins
+  const { CustomDevServer } = context;
 
-  for (const item of configArr) {
-    const { chainConfig } = item;
+  if (configArr.length) {
+    let devServerConfig = {
+      port: 9999,
+      host: address.ip(),
+    };
 
-    const webpackConfig = chainConfig.toConfig();
+    for (const item of configArr) {
+      const { chainConfig } = item;
 
-    if (webpackConfig.devServer) {
-      devServerConfig = deepmerge(devServerConfig, webpackConfig.devServer);
-    }
-  }
+      const webpackConfig = chainConfig.toConfig();
 
-  const webpackConfig = configArr.map(v => v.chainConfig.toConfig());
-
-  let compiler;
-  try {
-    compiler = webpack(webpackConfig);
-  } catch (err) {
-    log.error(chalk.red('Failed to load webpack config.'));
-    log.error(err.message || err);
-    process.exit(1);
-  }
-
-  const devServer = new WebpackDevServer(compiler, devServerConfig);
-
-  await new Promise((resolve) => {
-    devServer.listen(devServerConfig.port, devServerConfig.host, (err) => {
-      if (err) {
-        console.log(chalk.red('[ERR]: Failed to start webpack dev server'));
-        console.error(err.message || err);
-        process.exit(1);
+      if (webpackConfig.devServer) {
+        devServerConfig = deepmerge(devServerConfig, webpackConfig.devServer);
       }
+    }
 
-      ['SIGINT', 'SIGTERM'].forEach(function(sig) {
-        process.on(sig, function() {
-          devServer.close();
-          process.exit();
+    const webpackConfig = configArr.map(v => v.chainConfig.toConfig());
+
+    let compiler;
+    try {
+      compiler = webpack(webpackConfig);
+    } catch (err) {
+      log.error(chalk.red('Failed to load webpack config.'));
+      log.error(err.message || err);
+      process.exit(1);
+    }
+
+    let devServer;
+    if (CustomDevServer) {
+      devServer = new CustomDevServer(compiler, devServerConfig);
+    } else {
+      devServer = new WebpackDevServer(compiler, devServerConfig);
+    }
+
+    await new Promise((resolve) => {
+      devServer.listen(devServerConfig.port, devServerConfig.host, (err) => {
+        if (err) {
+          console.log(chalk.red('[ERR]: Failed to start webpack dev server'));
+          console.error(err.message || err);
+          process.exit(1);
+        }
+
+        ['SIGINT', 'SIGTERM'].forEach(function(sig) {
+          process.on(sig, function() {
+            devServer.close();
+            process.exit();
+          });
         });
+
+        resolve();
       });
+    })
 
-      resolve();
-    });
-  })
+    serverUrl = `http://${devServerConfig.host}:${devServerConfig.port}`;
 
-  const serverUrl = `http://${devServerConfig.host}:${devServerConfig.port}`;
-
-  console.log(chalk.green('[Web] Starting the development server at:'));
-  console.log('   ', chalk.underline.white(serverUrl));
+    console.log(chalk.green('[Web] Starting the development server at:'));
+    console.log('   ', chalk.underline.white(serverUrl));
+  }
 
   await applyHook(`after.${command}`, {
     url: serverUrl,
