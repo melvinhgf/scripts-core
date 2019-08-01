@@ -1,8 +1,9 @@
 const webpack = require('webpack');
+const fs = require('fs-extra');
+const path = require('path');
 const chalk = require('chalk');
 
 const log = require('../core/log');
-
 const Context = require('../core/Context');
 
 module.exports = async function({
@@ -17,11 +18,21 @@ module.exports = async function({
     rootDir,
   });
 
-  const { applyHook } = context;
+  const { applyHook, rootDir: ctxRoot } = context;
 
   await applyHook(`before.${command}`);
 
   const configArr = await context.getConfig();
+
+  // clear build directory
+  let buildPath = path.resolve(ctxRoot, 'build');
+  if (configArr.length) {
+    const userBuildPath = configArr[0].chainConfig.toConfig().output.path;
+    if (userBuildPath) {
+      buildPath = path.resolve(ctxRoot, userBuildPath);
+    }
+  }
+  fs.removeSync(buildPath);
 
   for (const item of configArr) {
     const { name, chainConfig } = item;
@@ -65,14 +76,17 @@ module.exports = async function({
       });
     }
 
-    compiler.run((err) => {
-      if (err) {
-        throw err;
-      }
+    await new Promise((resolve, reject) => {
+      compiler.run((err) => {
+        if (err) {
+          reject();
+          throw err;
+        }
 
-      log.info(chalk.green('\nBuild successfully.'));
-      process.exit();
-    });
+        log.info(chalk.green('\nBuild successfully.'));
+        resolve();
+      });
+    })
 
     await applyHook(`after.${command}.${name}`);
   }
