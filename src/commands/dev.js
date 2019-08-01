@@ -5,7 +5,6 @@ const address = require('address');
 const WebpackDevServer = require('webpack-dev-server');
 
 const log = require('../core/log');
-
 const Context = require('../core/Context');
 
 module.exports = async function({
@@ -40,26 +39,20 @@ module.exports = async function({
     }
   }
 
+  const webpackConfig = configArr.map(v => v.chainConfig.toConfig());
 
-  for (const item of configArr) {
-    const { name, chainConfig } = item;
+  let compiler;
+  try {
+    compiler = webpack(webpackConfig);
+  } catch (err) {
+    log.error(chalk.red('Failed to load webpack config.'));
+    log.error(err.message || err);
+    process.exit(1);
+  }
 
+  const devServer = new WebpackDevServer(compiler, devServerConfig);
 
-    await applyHook(`before.${command}.${name}`);
-
-    const webpackConfig = chainConfig.toConfig();
-
-    let compiler;
-    try {
-      compiler = webpack(webpackConfig);
-    } catch (err) {
-      log.error(chalk.red('Failed to load webpack config.'));
-      log.error(err.message || err);
-      process.exit(1);
-    }
-
-    const devServer = new WebpackDevServer(compiler, devServerConfig);
-
+  await new Promise((resolve) => {
     devServer.listen(devServerConfig.port, devServerConfig.host, (err) => {
       if (err) {
         console.log(chalk.red('[ERR]: Failed to start webpack dev server'));
@@ -67,21 +60,23 @@ module.exports = async function({
         process.exit(1);
       }
 
-      const serverUrl = `http://${devServerConfig.host}:${devServerConfig.port}`;
-
-      console.log(chalk.green('[Web] Starting the development server at:'));
-      console.log('   ', chalk.underline.white(serverUrl));
-
       ['SIGINT', 'SIGTERM'].forEach(function(sig) {
         process.on(sig, function() {
           devServer.close();
           process.exit();
         });
       });
+
+      resolve();
     });
+  })
 
-    await applyHook(`after.${command}.${name}`);
-  }
+  const serverUrl = `http://${devServerConfig.host}:${devServerConfig.port}`;
 
-  await applyHook(`after.${command}`);
+  console.log(chalk.green('[Web] Starting the development server at:'));
+  console.log('   ', chalk.underline.white(serverUrl));
+
+  await applyHook(`after.${command}`, {
+    url: serverUrl,
+  });
 };
