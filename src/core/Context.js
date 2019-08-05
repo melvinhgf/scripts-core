@@ -97,15 +97,25 @@ module.exports = class Context {
   }
 
   registerConfig(name, chainConfig) {
-    chainConfig.get = (configName) => {
-      const configInfo = this.configArr.find(v => v.name === configName);
-      return configInfo.chainConfig;
-    };
+    chainConfig.get = this.getNamedConfig;
+    chainConfig.getAll = this.getAllConfig;
 
     this.configArr.push({
       name,
       chainConfig,
     });
+  }
+
+  getNamedConfig(name) {
+    const configInfo = this.configArr.find(v => v.name === name);
+    if (!configInfo) {
+      throw new Error(`There is no config named ${name}`)
+    };
+    return configInfo.chainConfig;
+  }
+
+  getAllConfig() {
+    return this.configArr;
   }
 
   setDevServer(server) {
@@ -151,6 +161,7 @@ module.exports = class Context {
       ]);
 
       const pluginAPI = {
+        log,
         context: pluginContext,
         registerConfig: this.registerConfig,
         chainWebpack: this.chainWebpack,
