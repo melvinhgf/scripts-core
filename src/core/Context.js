@@ -142,18 +142,22 @@ module.exports = class Context {
   async runPlugins() {
     for (const pluginInfo of this.plugins) {
       const { fn, options } = pluginInfo;
-      const pluginAPI = _.pick(this, [
+      const pluginContext = _.pick(this, [
         'command',
         'commandArgs',
         'rootDir',
         'userConfig',
         'pkg',
-
-        'registerConfig',
-        'chainWebpack',
-        'onHook',
-        'setDevServer',
       ]);
+
+      const pluginAPI = {
+        context: pluginContext,
+        registerConfig: this.registerConfig,
+        chainWebpack: this.chainWebpack,
+        onHook: this.onHook,
+        setDevServer: this.setDevServer,
+      }
+
       await fn(pluginAPI, options);
     }
   }
