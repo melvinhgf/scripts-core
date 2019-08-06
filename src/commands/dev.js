@@ -66,6 +66,13 @@ module.exports = async function({
 
     serverUrl = `http://${devServerConfig.host}:${devServerConfig.port}`;
 
+    compiler.hooks.done.tap('compileHook', async(stats) => {
+      await applyHook(`after.${command}Compile`, {
+        url: serverUrl,
+        stats,
+      });
+    });
+
     devServer.listen(devServerConfig.port, devServerConfig.host, async(err) => {
       if (err) {
         console.log(chalk.red('[ERR]: Failed to start webpack dev server'));
@@ -80,14 +87,13 @@ module.exports = async function({
         });
       });
 
-      console.log(chalk.green('[Web] Starting the development server at:'));
+      console.log(chalk.green('Starting the development server at:'));
       console.log('   ', chalk.underline.white(serverUrl));
-    });
 
-    compiler.hooks.done.tap('compileHook', async(stats) => {
       await applyHook(`after.${command}`, {
         url: serverUrl,
-        stats,
+        devServer,
+        err,
       });
     });
   }

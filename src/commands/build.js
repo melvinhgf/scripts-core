@@ -56,7 +56,6 @@ module.exports = async function({
           if (err.details) {
             console.error(err.details);
           }
-          process.exit(1);
         }
 
         const info = stats.toJson();
@@ -79,7 +78,6 @@ module.exports = async function({
           }),
         );
 
-        log.info(chalk.green('\nBuild successfully.'));
         resolve({
           err,
           stats,
