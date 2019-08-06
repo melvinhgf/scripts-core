@@ -28,7 +28,7 @@ module.exports = async function({
   const configArr = await context.getConfig();
 
   // CustomDevServer may be changed by plugins
-  const { CustomDevServer } = context;
+  const { __CustomDevServer: CustomDevServer } = context;
 
   if (configArr.length) {
     let devServerConfig = {
