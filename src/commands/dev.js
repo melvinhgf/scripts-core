@@ -64,32 +64,31 @@ module.exports = async function({
       devServer = new WebpackDevServer(compiler, devServerConfig);
     }
 
-    await new Promise((resolve) => {
-      devServer.listen(devServerConfig.port, devServerConfig.host, (err) => {
-        if (err) {
-          console.log(chalk.red('[ERR]: Failed to start webpack dev server'));
-          console.error(err.message || err);
-          process.exit(1);
-        }
-
-        ['SIGINT', 'SIGTERM'].forEach(function(sig) {
-          process.on(sig, function() {
-            devServer.close();
-            process.exit();
-          });
-        });
-
-        resolve();
-      });
-    })
-
     serverUrl = `http://${devServerConfig.host}:${devServerConfig.port}`;
 
-    console.log(chalk.green('[Web] Starting the development server at:'));
-    console.log('   ', chalk.underline.white(serverUrl));
-  }
+    devServer.listen(devServerConfig.port, devServerConfig.host, async(err) => {
+      if (err) {
+        console.log(chalk.red('[ERR]: Failed to start webpack dev server'));
+        console.error(err.message || err);
+        process.exit(1);
+      }
 
-  await applyHook(`after.${command}`, {
-    url: serverUrl,
-  });
+      ['SIGINT', 'SIGTERM'].forEach(function(sig) {
+        process.on(sig, function() {
+          devServer.close();
+          process.exit();
+        });
+      });
+
+      console.log(chalk.green('[Web] Starting the development server at:'));
+      console.log('   ', chalk.underline.white(serverUrl));
+    });
+
+    compiler.hooks.done.tap('compileHook', async(stats) => {
+      await applyHook(`after.${command}`, {
+        url: serverUrl,
+        stats,
+      });
+    });
+  }
 };

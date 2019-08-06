@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const path = require('path');
 const autoBind = require('auto-bind');
 const fs = require('fs-extra');
@@ -20,16 +19,16 @@ module.exports = class Context {
     this.commandArgs = args;
     this.rootDir = rootDir;
 
-    this.configArr = []; // 配置
-    this.webpackFns = []; // 插件注册的修改函数
-    this.eventHooks = {}; // 插件注册的生命周期函数
-    this.CustomDevServer = null; // 自定义devServer
+    this.__configArr = []; // 配置
+    this.__webpackFns = []; // 插件注册的修改函数
+    this.__eventHooks = {}; // 插件注册的生命周期函数
+    this.__CustomDevServer = null; // 自定义devServer
 
     this.pkg = this.getProjectFile(PKG_FILE);
 
     this.userConfig = this.getUserConfig();
 
-    this.plugins = this.getPlugins();
+    this.__plugins = this.getPlugins();
   }
 
   getProjectFile(fileName) {
@@ -97,35 +96,30 @@ module.exports = class Context {
   }
 
   registerConfig(name, chainConfig) {
-    chainConfig.get = this.getNamedConfig;
-    chainConfig.getAll = this.getAllConfig;
+    chainConfig.getConfig = this.getNamedConfig;
 
-    this.configArr.push({
+    this.__configArr.push({
       name,
       chainConfig,
     });
   }
 
   getNamedConfig(name) {
-    const configInfo = this.configArr.find(v => v.name === name);
+    const configInfo = this.__configArr.find(v => v.name === name);
     if (!configInfo) {
       throw new Error(`There is no config named ${name}`)
     };
     return configInfo.chainConfig;
   }
 
-  getAllConfig() {
-    return this.configArr;
-  }
-
   setDevServer(server) {
-    this.CustomDevServer = server;
+    this.__CustomDevServer = server;
   }
 
   chainWebpack(fn) {
-    const fnInfo = this.webpackFns.find(v => v.name === this.pluginName);
+    const fnInfo = this.__webpackFns.find(v => v.name === this.pluginName);
     if (!fnInfo) {
-      this.webpackFns.push({
+      this.__webpackFns.push({
         name: this.pluginName,
         chainWebpack: [fn],
       });
@@ -135,14 +129,14 @@ module.exports = class Context {
   }
 
   onHook(key, fn) {
-    if (!Array.isArray(this.eventHooks[key])) {
-      this.eventHooks[key] = [];
+    if (!Array.isArray(this.__eventHooks[key])) {
+      this.__eventHooks[key] = [];
     }
-    this.eventHooks[key].push(fn);
+    this.__eventHooks[key].push(fn);
   }
 
   async applyHook(key, opts = {}) {
-    const hooks = this.eventHooks[key] || [];
+    const hooks = this.__eventHooks[key] || [];
 
     for (const fn of hooks) {
       await fn(opts);
@@ -150,19 +144,19 @@ module.exports = class Context {
   }
 
   async runPlugins() {
-    for (const pluginInfo of this.plugins) {
+    for (const pluginInfo of this.__plugins) {
       const { fn, options } = pluginInfo;
-      const pluginContext = _.pick(this, [
-        'command',
-        'commandArgs',
-        'rootDir',
-        'userConfig',
-        'pkg',
-      ]);
+      // const pluginContext = _.pick(this, [
+      //   'command',
+      //   'commandArgs',
+      //   'rootDir',
+      //   'userConfig',
+      //   'pkg',
+      // ]);
 
       const pluginAPI = {
         log,
-        context: pluginContext,
+        context: this,
         registerConfig: this.registerConfig,
         chainWebpack: this.chainWebpack,
         onHook: this.onHook,
@@ -174,9 +168,9 @@ module.exports = class Context {
   }
 
   async runWebpackFn() {
-    this.webpackFns.forEach((plugins) => {
+    this.__webpackFns.forEach((plugins) => {
       const { chainWebpack } = plugins;
-      const configApi = this.configArr[0].chainConfig;
+      const configApi = this.__configArr[0].chainConfig;
 
       chainWebpack.forEach(fn => {
         fn(configApi, {
@@ -190,6 +184,6 @@ module.exports = class Context {
     await this.runPlugins();
     await this.runWebpackFn();
 
-    return this.configArr;
+    return this.__configArr;
   }
 };

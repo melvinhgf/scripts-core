@@ -24,6 +24,7 @@ module.exports = async function({
 
   const configArr = await context.getConfig();
 
+  let res = {};
   // clear build directory
   if (configArr.length) {
     let buildPath = path.resolve(ctxRoot, 'build');
@@ -48,7 +49,7 @@ module.exports = async function({
       process.exit(1);
     }
 
-    await new Promise((resolve) => {
+    res = await new Promise((resolve) => {
       compiler.run((err, stats) => {
         if (err) {
           console.error(err.stack || err);
@@ -79,10 +80,13 @@ module.exports = async function({
         );
 
         log.info(chalk.green('\nBuild successfully.'));
-        resolve();
+        resolve({
+          err,
+          stats,
+        });
       });
     })
   }
 
-  await applyHook(`after.${command}`);
+  await applyHook(`after.${command}`, res);
 };
